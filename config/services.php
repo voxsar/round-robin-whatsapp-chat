@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'webhook_secret' => env('WHATSAPP_WEBHOOK_SECRET'),
+        'signature_header' => env('WHATSAPP_SIGNATURE_HEADER', 'X-Webhook-Signature'),
+    ],
+
 ];
