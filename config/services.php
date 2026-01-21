@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL'),
+        'token' => env('WHATSAPP_TOKEN'),
+        'send_message_endpoint' => env('WHATSAPP_SEND_MESSAGE_ENDPOINT', '/messages'),
+        'timeout' => env('WHATSAPP_TIMEOUT', 10),
+    ],
+
+    'pusher' => [
+        'app_id' => env('PUSHER_APP_ID'),
+        'key' => env('PUSHER_APP_KEY'),
+        'secret' => env('PUSHER_APP_SECRET'),
+        'cluster' => env('PUSHER_APP_CLUSTER'),
+    ],
+
 ];
