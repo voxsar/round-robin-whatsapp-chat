@@ -18,5 +18,8 @@ class ChatSession extends Model
         'mobile',
         'status',
         'group_id',
+        'instance',
+        'group_jid',
+        'group_subject',
     ];
 }
