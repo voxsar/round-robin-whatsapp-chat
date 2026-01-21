@@ -20,6 +20,7 @@
       </div>
     </main>
 
+    <!-- Floating chat widget -->
     <section class="fixed bottom-6 right-6 z-50">
       <button
         v-if="!isOpen"
@@ -45,9 +46,11 @@
         </div>
 
         <div class="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+          <!-- Pre-chat form -->
           <div v-if="!hasSession" class="rounded-lg border border-dashed border-slate-300 bg-white p-4">
             <h3 class="text-sm font-semibold text-slate-700">Start a chat</h3>
             <p class="mt-1 text-xs text-slate-500">Enter your details to spin up a WhatsApp group.</p>
+
             <div class="mt-3 space-y-3">
               <input
                 v-model="form.name"
@@ -73,17 +76,20 @@
                 placeholder="Instance (optional)"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               />
+
               <button
-                class="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+                class="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed"
                 :disabled="isLoading"
                 @click="startSession"
               >
                 {{ isLoading ? 'Starting...' : 'Start Chat' }}
               </button>
+
               <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
             </div>
           </div>
 
+          <!-- Message list -->
           <div v-else class="space-y-3">
             <div
               v-for="message in messages"
@@ -104,6 +110,7 @@
           </div>
         </div>
 
+        <!-- Composer -->
         <div class="border-t border-slate-200 bg-white p-3">
           <div class="flex items-center gap-2">
             <input
@@ -115,13 +122,14 @@
               @keydown.enter.prevent="sendMessage"
             />
             <button
-              class="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+              class="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed"
               :disabled="!hasSession || isSending"
               @click="sendMessage"
             >
               Send
             </button>
           </div>
+          <p v-if="error && hasSession" class="mt-2 text-xs text-red-500">{{ error }}</p>
         </div>
       </div>
     </section>
@@ -150,7 +158,8 @@ export default {
         mobile: '',
         instance: ''
       },
-      pusher: null
+      pusher: null,
+      pusherChannel: null
     };
   },
   mounted() {
@@ -159,9 +168,17 @@ export default {
       this.form.instance = appEl.dataset.whatsappInstance;
     }
   },
+  beforeUnmount() {
+    // Clean up Pusher subscriptions
+    try {
+      if (this.pusherChannel && this.pusher) this.pusher.unsubscribe(this.channelName);
+      if (this.pusher) this.pusher.disconnect();
+    } catch (_) {}
+  },
   methods: {
     async startSession() {
       this.error = '';
+
       if (!this.form.name) {
         this.error = 'Name is required.';
         return;
@@ -172,6 +189,7 @@ export default {
       }
 
       this.isLoading = true;
+
       try {
         const response = await fetch('/api/chat/session', {
           method: 'POST',
@@ -187,62 +205,74 @@ export default {
           })
         });
 
+        const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json();
-          this.error = errorData.message || 'Unable to start the session.';
+          this.error = data.message || 'Unable to start the session.';
           return;
         }
 
-        const data = await response.json();
         this.session = data.session;
         this.channelName = data.channel;
         this.hasSession = true;
         this.messages = [];
+
         this.setupPusher();
-      } catch (error) {
+      } catch (e) {
         this.error = 'Network error starting session.';
       } finally {
         this.isLoading = false;
       }
     },
+
     setupPusher() {
       const appEl = document.getElementById('app');
       const key = appEl?.dataset?.pusherKey;
-      const cluster = appEl?.dataset?.pusherCluster;
+      const cluster = appEl?.dataset?.pusherCluster || 'mt1';
 
       if (!key) {
+        this.error = 'Missing Pusher key (data-pusher-key on #app).';
+        return;
+      }
+      if (!this.channelName) {
+        this.error = 'Missing channel name from session response.';
         return;
       }
 
-      this.pusher = new Pusher(key, {
-        cluster: cluster || 'mt1'
-      });
+      // Ensure no duplicate subscriptions if startSession is called again
+      try {
+        if (this.pusher) this.pusher.disconnect();
+      } catch (_) {}
 
-      const channel = this.pusher.subscribe(this.channelName);
-      channel.bind('message', (payload) => {
+      this.pusher = new Pusher(key, { cluster });
+
+      this.pusherChannel = this.pusher.subscribe(this.channelName);
+      this.pusherChannel.bind('message', (payload) => {
         if (payload?.message) {
           this.messages.push(payload.message);
         }
       });
     },
+
     async sendMessage() {
-      if (!this.draft.trim()) {
-        return;
-      }
+      this.error = '';
+
+      const text = this.draft.trim();
+      if (!text || !this.hasSession || this.isSending) return;
 
       this.isSending = true;
-      const messageText = this.draft;
       this.draft = '';
 
+      // optimistic UI
       this.messages.push({
-        id: crypto.randomUUID(),
+        id: (crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
         sender: 'visitor',
-        text: messageText,
+        text,
         timestamp: new Date().toISOString()
       });
 
       try {
-        await fetch('/api/chat/message', {
+        const res = await fetch('/api/chat/message', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -250,19 +280,23 @@ export default {
           },
           body: JSON.stringify({
             session_id: this.session.id,
-            text: messageText
+            text
           })
         });
-      } catch (error) {
-        this.error = 'Message failed to send.';
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          this.error = data.message || 'Message failed to send.';
+        }
+      } catch (_) {
+        this.error = 'Message failed to send (network error).';
       } finally {
         this.isSending = false;
       }
     },
+
     formatTime(timestamp) {
-      if (!timestamp) {
-        return '';
-      }
+      if (!timestamp) return '';
       const date = new Date(timestamp);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }

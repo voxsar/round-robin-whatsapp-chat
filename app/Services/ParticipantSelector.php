@@ -4,24 +4,28 @@ namespace App\Services;
 
 class ParticipantSelector
 {
-    public function selectParticipants(): array
+    /**
+     * @return array<int, string>
+     */
+    public function selectParticipants(?bool $roundRobin = null): array
     {
-        $participants = config('services.whatsapp.participants', []);
-        $botNumber = config('services.whatsapp.bot_number');
-        $roundRobin = config('services.whatsapp.round_robin', false);
+        $roundRobin = $roundRobin ?? (bool) config('whatsapp.round_robin');
+        $botNumber = (string) config('whatsapp.bot_number');
+        $participants = [];
 
-        $selected = [];
-
-        if ($roundRobin && count($participants) > 0) {
-            $selected[] = $participants[array_rand($participants)];
+        if ($roundRobin) {
+            $pool = array_values(array_filter(config('whatsapp.participant_pool', [])));
+            if ($pool !== []) {
+                $participants[] = $pool[array_rand($pool)];
+            }
         } else {
-            $selected = $participants;
+            $participants = array_values(array_filter(config('whatsapp.fixed_participants', [])));
         }
 
-        if ($botNumber) {
-            $selected[] = $botNumber;
+        if ($botNumber !== '') {
+            array_unshift($participants, $botNumber);
         }
 
-        return array_values(array_unique(array_filter($selected)));
+        return array_values(array_unique($participants));
     }
 }

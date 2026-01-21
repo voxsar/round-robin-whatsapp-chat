@@ -8,10 +8,12 @@ use App\Services\PusherClient;
 use App\Services\WhatsappClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChatSessionController extends Controller
 {
-    public function start(Request $request, ParticipantSelector $selector, WhatsappClient $whatsapp)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -43,6 +45,9 @@ class ChatSessionController extends Controller
             ?? $groupResponse['jid']
             ?? $groupResponse['id']
             ?? null;
+
+            'group_id' => ['nullable', 'integer', 'min:1'],
+        ]);
 
         $session = ChatSession::create([
             'name' => $validated['name'],
@@ -92,5 +97,13 @@ class ChatSessionController extends Controller
         ]);
 
         return response()->json(['status' => 'sent']);
+            'status' => 'open',
+            'group_id' => $validated['group_id'] ?? null,
+        ]);
+
+        return response()->json([
+            'id' => $session->id,
+            'status' => $session->status,
+        ], 201);
     }
 }
