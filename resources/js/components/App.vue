@@ -117,6 +117,8 @@
 </template>
 
 <script>
+import Pusher from 'pusher-js';
+
 export default {
   name: 'App',
   data() {
@@ -204,7 +206,7 @@ export default {
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
