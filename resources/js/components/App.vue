@@ -1,59 +1,118 @@
 <template>
-  <div class="min-h-screen bg-slate-50 text-slate-900">
-    <header class="bg-white shadow-sm">
-      <div class="mx-auto max-w-6xl px-6 py-8">
-        <h1 class="text-3xl font-semibold">Round Robin WhatsApp Chat</h1>
-        <p class="mt-2 text-slate-600">
-          Proof-of-concept demo that spins up a WhatsApp group on first contact and streams updates via Pusher.
-        </p>
-      </div>
-    </header>
-    <main>
-      <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <section class="bg-white shadow-sm rounded-lg p-6">
-          <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="text-2xl font-semibold text-gray-800">Live group chat</h2>
-              <p class="text-sm text-gray-500">Channel: {{ channelName }}</p>
-            </div>
-            <span
-              class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
-              :class="statusClasses"
-            >
-              <span class="h-2 w-2 rounded-full" :class="statusDotClasses"></span>
-              {{ statusLabel }}
-            </span>
-          </header>
+  <div class="min-h-screen bg-slate-50">
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <button
+        class="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+        @click="toggleOpen"
+      >
+        <span class="text-base">💬</span>
+        <span v-if="!isOpen">Chat with us</span>
+        <span v-else>Close</span>
+      </button>
 
-          <div class="mt-6">
-            <div v-if="pusherError" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {{ pusherError }}
+      <div
+        v-if="isOpen"
+        class="w-[22rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+      >
+        <div class="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-4 py-3 text-white">
+          <div>
+            <p class="text-sm font-semibold">Round Robin WhatsApp</p>
+            <p class="text-xs text-slate-200">{{ connectionLabel }}</p>
+          </div>
+          <span
+            class="inline-flex items-center rounded-full px-2 py-1 text-[0.65rem] font-semibold"
+            :class="connectionBadgeClass"
+          >
+            {{ connectionStatus }}
+          </span>
+        </div>
+
+        <div v-if="!sessionId" class="p-4">
+          <h2 class="text-base font-semibold text-slate-900">Start a chat</h2>
+          <p class="mt-1 text-sm text-slate-500">Share a few details and we will connect you.</p>
+          <form class="mt-4 space-y-3" @submit.prevent="startChat">
+            <div>
+              <label class="text-xs font-semibold uppercase text-slate-500">Name</label>
+              <input
+                v-model="preChatForm.name"
+                type="text"
+                required
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="Jane Doe"
+              />
             </div>
-            <div
-              v-else
-              class="h-64 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-4"
+            <div>
+              <label class="text-xs font-semibold uppercase text-slate-500">WhatsApp Number</label>
+              <input
+                v-model="preChatForm.phone"
+                type="tel"
+                required
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="+1 555 000 0000"
+              />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase text-slate-500">How can we help?</label>
+              <textarea
+                v-model="preChatForm.message"
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="Tell us a bit about what you need."
+              ></textarea>
+            </div>
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
-              <p v-if="messages.length === 0" class="text-sm text-gray-500">
-                No messages yet. Broadcast a message to see it appear here.
-              </p>
-              <ul v-else class="space-y-3">
-                <li
-                  v-for="(message, index) in messages"
-                  :key="`${message.id ?? index}-${message.timestamp}`"
-                  class="rounded-lg bg-white p-3 shadow-sm"
-                >
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm font-semibold text-gray-700">{{ message.sender }}</p>
-                    <p class="text-xs text-gray-400">{{ message.timestamp }}</p>
-                  </div>
-                  <p class="mt-1 text-sm text-gray-600">{{ message.body }}</p>
-                </li>
-              </ul>
+              Start chat
+            </button>
+          </form>
+        </div>
+
+        <div v-else class="flex h-[28rem] flex-col">
+          <div class="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            <div
+              v-for="message in messages"
+              :key="message.id"
+              class="flex"
+              :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
+            >
+              <div
+                class="max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm"
+                :class="message.role === 'user'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-100 text-slate-700'"
+              >
+                <p>{{ message.text }}</p>
+                <p class="mt-1 text-[0.65rem] opacity-70">{{ message.timestamp }}</p>
+              </div>
+            </div>
+
+            <div v-if="messages.length === 0" class="rounded-xl border border-dashed border-slate-200 p-4 text-center">
+              <p class="text-sm text-slate-500">You are connected to our WhatsApp group. Say hello!</p>
             </div>
           </div>
-        </section>
+
+          <form class="border-t border-slate-100 p-3" @submit.prevent="sendMessage">
+            <div class="flex items-center gap-2">
+              <input
+                v-model="newMessage"
+                type="text"
+                class="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="Type your message..."
+                required
+              />
+              <button
+                type="submit"
+                class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Send
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
@@ -64,73 +123,99 @@ export default {
   name: 'App',
   data() {
     return {
-      groupId: 'default',
+      isOpen: false,
+      sessionId: null,
       messages: [],
-      pusherClient: null,
-      pusherError: '',
-      connected: false
-    };
+      connectionStatus: 'disconnected',
+      preChatForm: {
+        name: '',
+        phone: '',
+        message: ''
+      },
+      newMessage: ''
+    }
   },
   computed: {
-    channelName() {
-      return `chat-session.${this.groupId}`;
+    connectionLabel() {
+      if (this.connectionStatus === 'connecting') {
+        return 'Connecting to WhatsApp...'
+      }
+      if (this.connectionStatus === 'connected') {
+        return 'Connected to WhatsApp group'
+      }
+      return 'Offline'
     },
-    statusLabel() {
-      return this.connected ? 'Connected' : 'Waiting for connection';
-    },
-    statusClasses() {
-      return this.connected
-        ? 'bg-green-50 text-green-700'
-        : 'bg-yellow-50 text-yellow-700';
-    },
-    statusDotClasses() {
-      return this.connected ? 'bg-green-500' : 'bg-yellow-500';
+    connectionBadgeClass() {
+      if (this.connectionStatus === 'connected') {
+        return 'bg-emerald-500/20 text-emerald-100'
+      }
+      if (this.connectionStatus === 'connecting') {
+        return 'bg-amber-500/20 text-amber-100'
+      }
+      return 'bg-slate-700 text-slate-200'
     }
   },
-  mounted() {
-    const key = import.meta.env.VITE_PUSHER_APP_KEY;
-    const cluster = import.meta.env.VITE_PUSHER_APP_CLUSTER;
+  methods: {
+    toggleOpen() {
+      this.isOpen = !this.isOpen
+    },
+    startChat() {
+      this.sessionId = `session-${Date.now()}`
+      this.connectionStatus = 'connected'
 
-    if (!key || !cluster) {
-      this.pusherError = 'Pusher is not configured. Set VITE_PUSHER_APP_KEY and VITE_PUSHER_APP_CLUSTER.';
-      return;
-    }
+      if (this.preChatForm.message) {
+        this.messages.push({
+          id: `msg-${Date.now()}`,
+          role: 'user',
+          text: this.preChatForm.message,
+          timestamp: new Date().toLocaleTimeString()
+        })
+      }
+    },
+    async sendMessage() {
+      if (!this.newMessage.trim()) {
+        return
+      }
 
-    const client = new Pusher(key, {
-      cluster,
-      forceTLS: true
-    });
+      const messagePayload = {
+        sessionId: this.sessionId,
+        message: this.newMessage.trim()
+      }
 
-    client.connection.bind('connected', () => {
-      this.connected = true;
-    });
-    client.connection.bind('disconnected', () => {
-      this.connected = false;
-    });
-    client.connection.bind('error', (error) => {
-      this.pusherError = error?.error?.message || 'Unable to connect to Pusher.';
-    });
-
-    const channel = client.subscribe(this.channelName);
-    channel.bind('group-message-received', (payload) => {
-      const incoming = payload?.message || payload || {};
       this.messages.push({
-        id: incoming.id ?? null,
-        sender: incoming.sender ?? 'Unknown sender',
-        body: incoming.body ?? JSON.stringify(incoming),
-        timestamp: incoming.timestamp ?? new Date().toLocaleTimeString()
-      });
-    });
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text: messagePayload.message,
+        timestamp: new Date().toLocaleTimeString()
+      })
 
-    this.pusherClient = client;
-  },
-  beforeUnmount() {
-    if (this.pusherClient) {
-      this.pusherClient.disconnect();
+      this.newMessage = ''
+      this.connectionStatus = 'connecting'
+
+      try {
+        await fetch('/chat/message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(messagePayload)
+        })
+        this.connectionStatus = 'connected'
+      } catch (error) {
+        this.connectionStatus = 'disconnected'
+      }
     }
   }
 };
 </script>
 
 <style scoped>
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.6);
+  border-radius: 999px;
+}
 </style>
