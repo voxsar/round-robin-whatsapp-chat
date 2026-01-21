@@ -10,6 +10,9 @@ class ChatSession extends Model
     use HasFactory;
   
     protected $fillable = [
+        'session_id',
+        'whatsapp_group_id',
+        'pusher_channel',
         'group_id',
         'provider_instance',
         'pusher_channel',
