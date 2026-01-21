@@ -4,6 +4,11 @@ return [
     'default' => env('BROADCAST_CONNECTION', 'log'),
 
     'connections' => [
+
+    'default' => env('BROADCAST_CONNECTION', 'null'),
+
+    'connections' => [
+
         'pusher' => [
             'driver' => 'pusher',
             'key' => env('PUSHER_APP_KEY'),
@@ -17,6 +22,8 @@ return [
                 'useTLS' => env('PUSHER_SCHEME', 'https') === 'https',
             ],
             'client_options' => [],
+                'useTLS' => true,
+            ],
         ],
 
         'ably' => [
@@ -37,4 +44,7 @@ return [
             'driver' => 'null',
         ],
     ],
+
+    ],
+
 ];

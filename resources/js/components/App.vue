@@ -1,10 +1,11 @@
 <template>
-  <div id="app-container" class="min-h-screen bg-gray-50">
-    <header class="bg-white shadow">
-      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-bold text-gray-900">
-          Round Robin WhatsApp Chat
-        </h1>
+  <div class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="bg-white shadow-sm">
+      <div class="mx-auto max-w-6xl px-6 py-8">
+        <h1 class="text-3xl font-semibold">Round Robin WhatsApp Chat</h1>
+        <p class="mt-2 text-slate-600">
+          Proof-of-concept demo that spins up a WhatsApp group on first contact and streams updates via Pusher.
+        </p>
       </div>
     </header>
     <main>
@@ -52,7 +53,7 @@
           </div>
         </section>
       </div>
-    </main>
+    </section>
   </div>
 </template>
 

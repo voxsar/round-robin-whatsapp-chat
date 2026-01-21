@@ -2,42 +2,44 @@
 
 namespace App\Events;
 
+
+use App\Models\ChatSession;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class GroupMessageReceived implements ShouldBroadcast
+class GroupMessageReceived implements ShouldBroadcastNow
 {
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;
 
-    public string $groupId;
-    public array $message;
-
-    public function __construct(string $groupId, array $message)
-    {
-        $this->groupId = $groupId;
-        $this->message = $message;
+    public function __construct(
+        public readonly ChatSession $session,
+        public readonly array $payload,
+    ) {
     }
 
     public function broadcastOn(): Channel
     {
-        return new Channel("chat-session.{$this->groupId}");
+        return new Channel($this->session->pusher_channel);
     }
 
     public function broadcastAs(): string
     {
-        return 'group-message-received';
+        return 'GroupMessageReceived';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'groupId' => $this->groupId,
-            'message' => $this->message,
+            'chat_session_id' => $this->session->id,
+            'group_id' => $this->session->group_id,
+            'provider_instance' => $this->session->provider_instance,
+            'payload' => $this->payload,
         ];
     }
 }
