@@ -24,5 +24,24 @@ class ChatSession extends Model
         'instance',
         'group_jid',
         'group_subject',
+        'person_id',
+        'assigned_user_id',
+        'first_response_at',
+        'last_response_at',
     ];
+
+    protected $casts = [
+        'first_response_at' => 'datetime',
+        'last_response_at' => 'datetime',
+    ];
+
+    public function person()
+    {
+        return $this->belongsTo(Person::class);
+    }
+
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
+    }
 }

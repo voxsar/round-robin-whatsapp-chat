@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatSession;
+use App\Models\Person;
+use App\Models\User;
 use App\Services\ParticipantSelector;
 use App\Services\PusherClient;
 use App\Services\WhatsappClient;
@@ -19,6 +21,7 @@ class ChatSessionController extends Controller
             'email' => ['nullable', 'email', 'max:255', 'required_without:mobile'],
             'mobile' => ['nullable', 'string', 'max:30', 'required_without:email'],
             'instance' => ['nullable', 'string', 'max:255'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         $instance = $validated['instance'] ?? config('services.whatsapp.instance');
@@ -45,6 +48,42 @@ class ChatSessionController extends Controller
             ?? $groupResponse['id']
             ?? null;
 
+        $assignedUserId = $validated['assigned_user_id']
+            ?? User::query()
+                ->where('role', 'agent')
+                ->orderBy('id')
+                ->value('id');
+
+        $personQuery = Person::query();
+
+        if (! empty($validated['email'])) {
+            $personQuery->orWhere('email', $validated['email']);
+        }
+
+        if (! empty($validated['mobile'])) {
+            $personQuery->orWhere('mobile', $validated['mobile']);
+        }
+
+        $person = $personQuery->first();
+
+        if (! $person) {
+            $person = Person::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'mobile' => $validated['mobile'] ?? null,
+                'stage' => 'new',
+                'assigned_user_id' => $assignedUserId,
+            ]);
+        } else {
+            $person->fill([
+                'name' => $person->name ?: $validated['name'],
+                'email' => $person->email ?: ($validated['email'] ?? null),
+                'mobile' => $person->mobile ?: ($validated['mobile'] ?? null),
+                'assigned_user_id' => $person->assigned_user_id ?: $assignedUserId,
+            ]);
+            $person->save();
+        }
+
         $session = ChatSession::create([
             'name' => $validated['name'],
             'email' => $validated['email'] ?? null,
@@ -55,6 +94,8 @@ class ChatSessionController extends Controller
             'status' => 'active',
             'pusher_channel' => "session-" . uniqid('chat_', true),
 			'session_id' => "session-" . uniqid('chat_', true),
+            'person_id' => $person->id,
+            'assigned_user_id' => $assignedUserId,
         ]);
 
         return response()->json([
