@@ -6,6 +6,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\ChatSession;
+use App\Models\Person;
 
 class User extends Authenticatable
 {
@@ -21,6 +23,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'manager_id',
     ];
 
     /**
@@ -44,5 +48,25 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(self::class, 'manager_id');
+    }
+
+    public function directReports()
+    {
+        return $this->hasMany(self::class, 'manager_id');
+    }
+
+    public function assignedPeople()
+    {
+        return $this->hasMany(Person::class, 'assigned_user_id');
+    }
+
+    public function assignedChatSessions()
+    {
+        return $this->hasMany(ChatSession::class, 'assigned_user_id');
     }
 }

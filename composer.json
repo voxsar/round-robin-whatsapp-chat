@@ -13,6 +13,7 @@
         "filament/filament": "^5.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "mokhosh/filament-kanban": "^3.0",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {

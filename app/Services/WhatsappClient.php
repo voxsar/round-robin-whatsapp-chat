@@ -21,6 +21,26 @@ class WhatsappClient
             ->json() ?? [];
     }
 
+    public function addParticipants(string $instance, string $groupId, array $participants): array
+    {
+        return $this->request()
+            ->post($this->endpoint($this->groupParticipantEndpoint('whatsapp.group_add_participant_endpoint', $instance)), [
+                'groupId' => $groupId,
+                'participants' => $participants,
+            ])
+            ->json() ?? [];
+    }
+
+    public function removeParticipants(string $instance, string $groupId, array $participants): array
+    {
+        return $this->request()
+            ->post($this->endpoint($this->groupParticipantEndpoint('whatsapp.group_remove_participant_endpoint', $instance)), [
+                'groupId' => $groupId,
+                'participants' => $participants,
+            ])
+            ->json() ?? [];
+    }
+
     private function request(): PendingRequest
     {
         return Http::withHeaders([
@@ -31,5 +51,12 @@ class WhatsappClient
     private function endpoint(string $path): string
     {
         return rtrim(config('services.whatsapp.base_url', ''), '/') . $path;
+    }
+
+    private function groupParticipantEndpoint(string $configKey, string $instance): string
+    {
+        $template = config($configKey, "/group/participants/{$instance}");
+
+        return str_replace('{instance}', $instance, $template);
     }
 }

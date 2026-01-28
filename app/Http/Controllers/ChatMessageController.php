@@ -52,6 +52,12 @@ class ChatMessageController extends Controller
             return response()->json(['message' => 'Failed to send message.'], 502);
         }
 
+        if (! $session->first_response_at) {
+            $session->first_response_at = now();
+        }
+        $session->last_response_at = now();
+        $session->save();
+
         if (! empty($session->pusher_channel)) {
             try {
                 $broadcaster->broadcastMessage($session->pusher_channel, [
