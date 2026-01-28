@@ -9,11 +9,10 @@ use App\Services\WhatsappClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ChatSessionController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, WhatsappClient $whatsapp, ParticipantSelector $selector): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -46,9 +45,6 @@ class ChatSessionController extends Controller
             ?? $groupResponse['id']
             ?? null;
 
-            'group_id' => ['nullable', 'integer', 'min:1'],
-        ]);
-
         $session = ChatSession::create([
             'name' => $validated['name'],
             'email' => $validated['email'] ?? null,
@@ -57,16 +53,18 @@ class ChatSessionController extends Controller
             'group_jid' => $groupJid,
             'group_subject' => $subject,
             'status' => 'active',
+            'pusher_channel' => "session-" . uniqid('chat_', true),
+			'session_id' => "session-" . uniqid('chat_', true),
         ]);
 
         return response()->json([
             'session' => $session,
             'group' => $groupResponse,
-            'channel' => "session-{$session->id}",
+            'channel' => $session->pusher_channel,
         ]);
     }
 
-    public function sendMessage(Request $request, WhatsappClient $whatsapp, PusherClient $pusher)
+    public function sendMessage(Request $request, WhatsappClient $whatsapp, PusherClient $pusher): JsonResponse
     {
         $validated = $request->validate([
             'session_id' => ['required', 'integer', 'exists:chat_sessions,id'],
@@ -97,13 +95,5 @@ class ChatSessionController extends Controller
         ]);
 
         return response()->json(['status' => 'sent']);
-            'status' => 'open',
-            'group_id' => $validated['group_id'] ?? null,
-        ]);
-
-        return response()->json([
-            'id' => $session->id,
-            'status' => $session->status,
-        ], 201);
     }
 }

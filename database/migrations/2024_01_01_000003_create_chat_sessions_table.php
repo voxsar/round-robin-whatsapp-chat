@@ -12,7 +12,16 @@ return new class extends Migration
             $table->id();
             $table->string('group_id')->nullable()->index();
             $table->string('provider_instance')->nullable()->index();
-            $table->string('pusher_channel');
+            $table->string('pusher_channel')->nullable();
+            $table->string('name')->nullable();
+            $table->string('email')->nullable();
+            $table->string('mobile')->nullable();
+            $table->string('instance')->nullable();
+            $table->string('group_jid')->nullable();
+            $table->string('group_subject')->nullable();
+            $table->string('status')->default('active')->nullable();
+            $table->string('session_id')->unique()->nullable();
+            $table->string('whatsapp_group_id')->nullable();
             $table->timestamps();
         });
     }

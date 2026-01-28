@@ -30,16 +30,26 @@ class GroupMessageReceived implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'GroupMessageReceived';
+        return 'message';
     }
 
     public function broadcastWith(): array
     {
+        // Extract message details from the payload
+        $messageText = $this->payload['message']['text'] 
+            ?? $this->payload['message'] 
+            ?? '';
+        
+        $sender = $this->payload['sender'] ?? 'agent';
+        $timestamp = $this->payload['timestamp'] ?? now()->toIso8601String();
+        
         return [
-            'chat_session_id' => $this->session->id,
-            'group_id' => $this->session->group_id,
-            'provider_instance' => $this->session->provider_instance,
-            'payload' => $this->payload,
+            'message' => [
+                'id' => uniqid('msg_', true),
+                'sender' => 'agent',
+                'text' => $messageText,
+                'timestamp' => $timestamp,
+            ],
         ];
     }
 }

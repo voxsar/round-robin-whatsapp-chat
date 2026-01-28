@@ -1,52 +1,312 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Round Robin WhatsApp Chat
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel-based web application that creates WhatsApp group chats with round-robin agent assignment. Features a Vue.js chat widget that connects visitors to WhatsApp groups via API integration with real-time messaging through Pusher.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Chat Widget**: Embedded Vue.js chat interface
+- **WhatsApp Integration**: Automatically creates WhatsApp groups for each chat session
+- **Round-Robin Assignment**: Distributes chats among available agents
+- **Real-time Messaging**: Uses Pusher for instant message delivery
+- **Session Management**: Tracks chat sessions and participants
+- **Webhook Support**: Receives WhatsApp message notifications
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Composer
+- Node.js & npm
+- MySQL/MariaDB
+- WhatsApp Business API access
+- Pusher account
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1. Clone the repository
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+git clone <repository-url>
+cd round-robin-whatsapp-chat
+```
 
-## Laravel Sponsors
+### 2. Install dependencies
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install
+npm install
+```
 
-### Premium Partners
+### 3. Configure environment
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Contributing
+### 4. Configure database
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Update `.env` with your database credentials:
 
-## Code of Conduct
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=round_robin
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+```
+
+### 5. Configure Pusher
+
+Sign up at [https://pusher.com](https://pusher.com) and get your credentials:
+
+```env
+PUSHER_APP_ID=your_app_id
+PUSHER_APP_KEY=your_app_key
+PUSHER_APP_SECRET=your_app_secret
+PUSHER_APP_CLUSTER=your_cluster
+
+VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+```
+
+### 6. Configure WhatsApp API
+
+Update `.env` with your WhatsApp API details:
+
+```env
+# WhatsApp API Configuration
+WHATSAPP_BASE_URL=https://your-whatsapp-api.com
+WHATSAPP_API_KEY=your_api_key
+WHATSAPP_INSTANCE=your_instance_name
+
+# Participant Configuration
+WHATSAPP_BOT_NUMBER=+1234567890
+WHATSAPP_FIXED_PARTICIPANTS=+1234567891,+1234567892
+WHATSAPP_PARTICIPANT_POOL=+1234567893,+1234567894,+1234567895
+WHATSAPP_ROUND_ROBIN=true
+```
+
+### 7. Run migrations
+
+```bash
+php artisan migrate
+```
+
+### 8. Build frontend assets
+
+```bash
+npm run build
+# Or for development with hot reload:
+npm run dev
+```
+
+### 9. Start the application
+
+```bash
+php artisan serve
+```
+
+Visit `http://localhost:8000` to see the chat widget.
+
+## Configuration
+
+### Round-Robin vs Fixed Participants
+
+In `config/whatsapp.php` and `.env`:
+
+**Fixed Participants Mode** (WHATSAPP_ROUND_ROBIN=false):
+- All chats include all participants from `WHATSAPP_FIXED_PARTICIPANTS`
+
+**Round-Robin Mode** (WHATSAPP_ROUND_ROBIN=true):
+- Each chat randomly selects one participant from `WHATSAPP_PARTICIPANT_POOL`
+- Distributes workload evenly among agents
+
+### Bot Number
+
+`WHATSAPP_BOT_NUMBER` is always included in every group (typically your business number).
+
+## API Endpoints
+
+### Create Chat Session
+
+```bash
+POST /chat/session
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "mobile": "+1234567890"
+}
+```
+
+**Response:**
+```json
+{
+  "session": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "mobile": "+1234567890",
+    "group_jid": "120363123456789@g.us",
+    "status": "active"
+  },
+  "group": {
+    "remoteJid": "120363123456789@g.us"
+  },
+  "channel": "session-1"
+}
+```
+
+### Send Message
+
+```bash
+POST /chat/message
+Content-Type: application/json
+
+{
+  "session_id": 1,
+  "text": "Hello, I need help!"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "sent"
+}
+```
+
+### WhatsApp Webhook
+
+```bash
+POST /webhooks/whatsapp
+X-Webhook-Signature: <signature>
+
+{
+  "event": "message.received",
+  "data": {
+    "message": "Response from agent",
+    "from": "+1234567891"
+  }
+}
+```
+
+## Frontend Integration
+
+The chat widget is automatically loaded on the `/` route. To embed it elsewhere:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body>
+    <div 
+        id="app"
+        data-pusher-key="{{ config('services.pusher.key') }}"
+        data-pusher-cluster="{{ config('services.pusher.cluster') }}"
+    ></div>
+</body>
+</html>
+```
+
+## Troubleshooting
+
+### No messages are being sent
+
+1. Check WhatsApp API credentials in `.env`
+2. Verify `WHATSAPP_BASE_URL` and `WHATSAPP_INSTANCE` are correct
+3. Check Laravel logs: `tail -f storage/logs/laravel.log`
+
+### Real-time messages not working
+
+1. Verify Pusher credentials in `.env`
+2. Check browser console for Pusher connection errors
+3. Ensure frontend assets are built: `npm run build`
+
+### WhatsApp groups not being created
+
+1. Verify participant phone numbers include country code (e.g., +1234567890)
+2. Check if participants exist in WhatsApp
+3. Verify API permissions for group creation
+
+### Webhook not receiving messages
+
+1. Verify webhook URL is configured in your WhatsApp provider
+2. Ensure the webhook endpoint is publicly accessible
+3. Check webhook logs: `tail -f storage/logs/laravel.log | grep "WhatsApp Webhook"`
+4. Test locally: `php test-webhook.php`
+5. Verify CSRF is disabled for webhook route in `bootstrap/app.php`
+
+### Messages received but not broadcasting
+
+1. Verify Pusher credentials are correct
+2. Check that chat session exists with matching `group_jid`
+3. Ensure session status is 'active'
+4. Check Pusher debug console for events
+
+### Frontend not connecting to backend
+
+1. Ensure CSRF token is present in the page
+2. Check if routes are registered: `php artisan route:list`
+3. Verify database session is configured: `SESSION_DRIVER=database`
+
+## Development
+
+### Run with hot reload
+
+```bash
+npm run dev
+php artisan serve
+```
+
+### Queue workers (for background jobs)
+
+```bash
+php artisan queue:work
+```
+
+### Run tests
+
+```bash
+php artisan test
+```
+
+## Project Structure
+
+```
+app/
+├── Http/Controllers/
+│   └── ChatSessionController.php    # Main chat API controller
+├── Models/
+│   └── ChatSession.php              # Session model
+├── Services/
+│   ├── WhatsappClient.php           # WhatsApp API client
+│   ├── PusherClient.php             # Pusher client
+│   └── ParticipantSelector.php      # Round-robin logic
+config/
+├── services.php                      # API credentials
+└── whatsapp.php                      # WhatsApp configuration
+resources/
+├── js/
+│   ├── app.js                        # Vue app entry
+│   └── components/
+│       └── App.vue                   # Chat widget component
+└── views/
+    └── app.blade.php                 # Main view
+routes/
+├── web.php                           # Web routes
+└── api.php                           # API routes (if any)
+```
+
+## License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
 
 In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 

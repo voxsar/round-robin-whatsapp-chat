@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -12,16 +13,17 @@ class WhatsAppProvider
     {
         $baseUrl = config('services.whatsapp.base_url');
         $token = config('services.whatsapp.token');
-        $endpoint = config('services.whatsapp.send_message_endpoint', '/messages');
+		$instance = config('services.whatsapp.instance');
+        $endpoint = config('services.whatsapp.send_message_endpoint', '/message/sendText/'.$instance);
 
         if (empty($baseUrl) || empty($token)) {
             throw new RuntimeException('WhatsApp provider credentials are not configured.');
         }
-
+		Log::info(rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/'));
         $response = $this->client($token)
             ->post(rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/'), [
-                'group_id' => $groupId,
-                'message' => $message,
+                'number' => $groupId,
+                'text' => $message,
             ]);
 
         if (! $response->successful()) {
@@ -31,7 +33,10 @@ class WhatsAppProvider
 
     private function client(string $token): PendingRequest
     {
-        return Http::withToken($token)
+        //api header called apiKey 
+		return Http::withHeaders([
+			'apiKey' => $token,	
+		])
             ->acceptJson()
             ->asJson()
             ->timeout(config('services.whatsapp.timeout', 10));

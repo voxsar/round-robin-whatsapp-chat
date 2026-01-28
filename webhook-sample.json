@@ -1,0 +1,26 @@
+[
+	{
+		"headers": {
+			"host": "automation.nanaska.com",
+			"content-type": "application/json",
+			"user-agent": "axios/1.13.2"
+		},
+		"body": {
+			"event": "messages.upsert",
+			"instance": "WhatsApp",
+			"data": {
+				"key": {
+					"remoteJid": "120363422186326906@g.us",
+					"fromMe": false,
+					"id": "TEST_MESSAGE_ID_001"
+				},
+				"pushName": "Test User",
+				"message": {
+					"conversation": "This is a test message from the webhook"
+				},
+				"messageTimestamp": 1737421523
+			},
+			"sender": "94789210953@s.whatsapp.net"
+		}
+	}
+]

@@ -34,41 +34,21 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+
     'pusher' => [
         'app_id' => env('PUSHER_APP_ID'),
         'key' => env('PUSHER_APP_KEY'),
         'secret' => env('PUSHER_APP_SECRET'),
-        'cluster' => env('PUSHER_APP_CLUSTER'),
-    ],
-    'whatsapp' => [
-        'base_url' => env('WHATSAPP_BASE_URL'),
-        'api_key' => env('WHATSAPP_API_KEY'),
-        'bot_number' => env('WHATSAPP_BOT_NUMBER'),
-        'participants' => array_filter(array_map('trim', explode(',', env('WHATSAPP_PARTICIPANTS', '')))),
-        'round_robin' => filter_var(env('WHATSAPP_ROUND_ROBIN', false), FILTER_VALIDATE_BOOLEAN),
-        'instance' => env('WHATSAPP_INSTANCE'),
+        'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
     ],
 
     'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL'),
+        'api_key' => env('WHATSAPP_API_KEY'),
+		'token' => env('WHATSAPP_API_KEY'),
+        'instance' => env('WHATSAPP_INSTANCE'),
         'webhook_secret' => env('WHATSAPP_WEBHOOK_SECRET'),
         'signature_header' => env('WHATSAPP_SIGNATURE_HEADER', 'X-Webhook-Signature'),
-        'base_url' => env('WHATSAPP_BASE_URL'),
-        'api_key' => env('WHATSAPP_API_KEY'),
-        'group_api_key' => env('GROUP_API_KEY'),
-    ],
-
-    'whatsapp' => [
-        'base_url' => env('WHATSAPP_BASE_URL'),
-        'token' => env('WHATSAPP_TOKEN'),
-        'send_message_endpoint' => env('WHATSAPP_SEND_MESSAGE_ENDPOINT', '/messages'),
-        'timeout' => env('WHATSAPP_TIMEOUT', 10),
-    ],
-
-    'pusher' => [
-        'app_id' => env('PUSHER_APP_ID'),
-        'key' => env('PUSHER_APP_KEY'),
-        'secret' => env('PUSHER_APP_SECRET'),
-        'cluster' => env('PUSHER_APP_CLUSTER'),
     ],
 
 ];

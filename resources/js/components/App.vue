@@ -42,29 +42,29 @@
               />
             </div>
             <div>
+              <label class="text-xs font-semibold uppercase text-slate-500">Email</label>
+              <input
+                v-model="preChatForm.email"
+                type="email"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="jane@example.com"
+              />
+            </div>
+            <div>
               <label class="text-xs font-semibold uppercase text-slate-500">WhatsApp Number</label>
               <input
-                v-model="preChatForm.phone"
+                v-model="preChatForm.mobile"
                 type="tel"
-                required
                 class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 placeholder="+1 555 000 0000"
               />
             </div>
-            <div>
-              <label class="text-xs font-semibold uppercase text-slate-500">How can we help?</label>
-              <textarea
-                v-model="preChatForm.message"
-                rows="3"
-                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                placeholder="Tell us a bit about what you need."
-              ></textarea>
-            </div>
             <button
               type="submit"
-              class="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              :disabled="isCreatingSession"
+              class="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
             >
-              Start chat
+              {{ isCreatingSession ? 'Creating...' : 'Start chat' }}
             </button>
           </form>
         </div>
@@ -75,11 +75,11 @@
               v-for="message in messages"
               :key="message.id"
               class="flex"
-              :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
+              :class="message.sender === 'visitor' ? 'justify-end' : 'justify-start'"
             >
               <div
                 class="max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm"
-                :class="message.role === 'user'
+                :class="message.sender === 'visitor'
                   ? 'bg-emerald-600 text-white'
                   : 'bg-slate-100 text-slate-700'"
               >
@@ -125,14 +125,18 @@ export default {
     return {
       isOpen: false,
       sessionId: null,
+      sessionData: null,
       messages: [],
       connectionStatus: 'disconnected',
+      isCreatingSession: false,
       preChatForm: {
         name: '',
-        phone: '',
-        message: ''
+        email: '',
+        mobile: ''
       },
-      newMessage: ''
+      newMessage: '',
+      pusher: null,
+      channel: null
     }
   },
   computed: {
@@ -155,54 +159,114 @@ export default {
       return 'bg-slate-700 text-slate-200'
     }
   },
+  mounted() {
+    this.initPusher()
+  },
   methods: {
     toggleOpen() {
       this.isOpen = !this.isOpen
     },
-    startChat() {
-      this.sessionId = `session-${Date.now()}`
-      this.connectionStatus = 'connected'
+    initPusher() {
+      const appElement = document.getElementById('app')
+      const pusherKey = appElement?.getAttribute('data-pusher-key')
+      const pusherCluster = appElement?.getAttribute('data-pusher-cluster')
 
-      if (this.preChatForm.message) {
-        this.messages.push({
-          id: `msg-${Date.now()}`,
-          role: 'user',
-          text: this.preChatForm.message,
-          timestamp: new Date().toLocaleTimeString()
+      if (pusherKey) {
+        this.pusher = new Pusher(pusherKey, {
+          cluster: pusherCluster || 'mt1'
         })
       }
     },
-    async sendMessage() {
-      if (!this.newMessage.trim()) {
+    async startChat() {
+      if (!this.preChatForm.name || (!this.preChatForm.email && !this.preChatForm.mobile)) {
+        alert('Please provide your name and either email or mobile number')
         return
       }
 
-      const messagePayload = {
-        sessionId: this.sessionId,
-        message: this.newMessage.trim()
+      this.isCreatingSession = true
+      this.connectionStatus = 'connecting'
+
+      try {
+        const response = await fetch('/chat/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+          },
+          body: JSON.stringify({
+            name: this.preChatForm.name,
+            email: this.preChatForm.email || null,
+            mobile: this.preChatForm.mobile || null
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to create chat session')
+        }
+
+        const data = await response.json()
+        this.sessionData = data.session
+        this.sessionId = data.session.id
+        this.connectionStatus = 'connected'
+
+        // Subscribe to Pusher channel
+        if (this.pusher && data.channel) {
+          this.channel = this.pusher.subscribe(data.channel)
+          this.channel.bind('message', (messageData) => {
+            if (messageData.message && messageData.message.sender !== 'visitor') {
+              this.messages.push({
+                id: messageData.message.id || `msg-${Date.now()}`,
+                sender: messageData.message.sender || 'agent',
+                text: messageData.message.text,
+                timestamp: new Date(messageData.message.timestamp || Date.now()).toLocaleTimeString()
+              })
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Error creating chat session:', error)
+        this.connectionStatus = 'disconnected'
+        alert('Failed to start chat session. Please check your configuration.')
+      } finally {
+        this.isCreatingSession = false
+      }
+    },
+    async sendMessage() {
+      if (!this.newMessage.trim() || !this.sessionId) {
+        return
       }
 
+      const messageText = this.newMessage.trim()
+      const messageId = `msg-${Date.now()}`
+
       this.messages.push({
-        id: `msg-${Date.now()}`,
-        role: 'user',
-        text: messagePayload.message,
+        id: messageId,
+        sender: 'visitor',
+        text: messageText,
         timestamp: new Date().toLocaleTimeString()
       })
 
       this.newMessage = ''
-      this.connectionStatus = 'connecting'
 
       try {
-        await fetch('/chat/message', {
+        const response = await fetch('/chat/message', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
           },
-          body: JSON.stringify(messagePayload)
+          body: JSON.stringify({
+            session_id: this.sessionId,
+            message: messageText
+          })
         })
-        this.connectionStatus = 'connected'
+
+        if (!response.ok) {
+          throw new Error('Failed to send message')
+        }
       } catch (error) {
-        this.connectionStatus = 'disconnected'
+        console.error('Error sending message:', error)
+        alert('Failed to send message')
       }
     }
   }
