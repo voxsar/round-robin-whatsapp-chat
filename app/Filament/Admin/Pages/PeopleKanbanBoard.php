@@ -4,45 +4,34 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Person;
 use Illuminate\Database\Eloquent\Builder;
-use Mokhosh\FilamentKanban\Pages\KanbanBoard;
+use Relaticle\Flowforge\Board;
+use Relaticle\Flowforge\BoardPage;
+use Relaticle\Flowforge\Column;
 
-class PeopleKanbanBoard extends KanbanBoard
+class PeopleKanbanBoard extends BoardPage
 {
-    protected static ?string $navigationIcon = 'heroicon-o-view-columns';
-    protected static ?string $navigationGroup = 'Operations';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-view-columns';
+    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
     protected static ?string $title = 'People Kanban';
     protected static ?string $navigationLabel = 'People Kanban';
-    protected static string $model = Person::class;
-    protected static string $recordStatusAttribute = 'stage';
-    protected static string $recordTitleAttribute = 'name';
 
-    protected function statuses(): array
+    public function board(Board $board): Board
     {
-        return [
-            'new' => [
-                'title' => 'New',
-                'color' => 'gray',
-            ],
-            'qualified' => [
-                'title' => 'Qualified',
-                'color' => 'info',
-            ],
-            'in_progress' => [
-                'title' => 'In Progress',
-                'color' => 'warning',
-            ],
-            'resolved' => [
-                'title' => 'Resolved',
-                'color' => 'success',
-            ],
-            'archived' => [
-                'title' => 'Archived',
-                'color' => 'secondary',
-            ],
-        ];
+        return $board
+            ->query($this->getEloquentQuery())
+            ->recordTitleAttribute('name')
+            ->columnIdentifier('stage')
+            ->positionIdentifier('position') // Enable drag-and-drop with position field
+            ->columns([
+                Column::make('new')->label('New')->color('gray'),
+                Column::make('qualified')->label('Qualified')->color('info'),
+                Column::make('in_progress')->label('In Progress')->color('warning'),
+                Column::make('resolved')->label('Resolved')->color('success'),
+                Column::make('archived')->label('Archived')->color('secondary'),
+            ]);
     }
 
-    protected function getEloquentQuery(): Builder
+    public function getEloquentQuery(): Builder
     {
         $query = Person::query()->with('assignedUser');
         $user = auth()->user();

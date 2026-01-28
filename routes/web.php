@@ -13,6 +13,10 @@ Route::get('/', function () {
     return view('app');
 });
 
+Route::get('/login', function () {
+    return redirect()->to('/admin/login');
+})->name('login');
+
 Route::post('/chat/message', [ChatMessageController::class, 'store'])
     ->withoutMiddleware([VerifyCsrfToken::class]);
 Route::post('/webhooks/whatsapp', WhatsAppWebhookController::class);

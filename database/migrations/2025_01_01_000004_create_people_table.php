@@ -14,6 +14,9 @@ return new class extends Migration
             $table->string('email')->nullable()->index();
             $table->string('mobile')->nullable()->index();
             $table->string('stage')->default('new')->index();
+			$table->flowforgePositionColumn('position');
+			//status
+			$table->string('status')->default('todo')->index();
             $table->foreignId('assigned_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });

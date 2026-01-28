@@ -5,25 +5,28 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\ChatSessionResource\Pages;
 use App\Models\ChatSession;
 use App\Models\User;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Illuminate\Database\Eloquent\Builder;
 
 class ChatSessionResource extends Resource
 {
     protected static ?string $model = ChatSession::class;
-    protected static ?string $navigationGroup = 'Operations';
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     protected static ?string $navigationLabel = 'Chat Sessions';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 TextInput::make('name')
                     ->maxLength(255),
@@ -81,12 +84,12 @@ class ChatSessionResource extends Resource
                         'archived' => 'Archived',
                     ]),
             ])
-            ->actions([
-                \Filament\Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
             ->bulkActions([
-                \Filament\Tables\Actions\BulkActionGroup::make([
-                    \Filament\Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

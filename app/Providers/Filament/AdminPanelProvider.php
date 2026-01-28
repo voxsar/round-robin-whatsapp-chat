@@ -24,15 +24,18 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
+            ->default()
             ->id('admin')
             ->path('admin')
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->login()
 			//default
 			
             ->colors([
                 'primary' => Color::Amber,
             ])
             ->plugins([
-                \Mokhosh\FilamentKanban\FilamentKanbanPlugin::make(),
+                \Relaticle\Flowforge\FlowforgePlugin::make(),
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
