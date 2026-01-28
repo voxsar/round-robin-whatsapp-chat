@@ -90,6 +90,8 @@ class ChatSessionController extends Controller
             'mobile' => $validated['mobile'] ?? null,
             'instance' => $instance,
             'group_jid' => $groupJid,
+			'group_id' => $groupJid,
+			'provider' => 'whatsapp',
             'group_subject' => $subject,
             'status' => 'active',
             'pusher_channel' => "session-" . uniqid('chat_', true),

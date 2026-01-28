@@ -24,9 +24,13 @@ class WebhookController extends Controller
         // Extract event type
         $event = $payload['event'] ?? null;
         
-        // Only process message upsert events
-        if ($event !== 'messages.upsert') {
-            return response()->json(['status' => 'ignored', 'reason' => 'not_message_event']);
+        // Only process message upsert events OR send.message
+		switch($event) {
+            case 'messages.upsert':
+            case 'send.message':
+                break;
+            default:
+                return response()->json(['status' => 'ignored', 'reason' => 'not_message_event', 'event' => $event]);
         }
 
         // Extract data from the webhook payload
