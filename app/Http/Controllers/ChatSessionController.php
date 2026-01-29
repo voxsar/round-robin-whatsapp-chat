@@ -33,11 +33,13 @@ class ChatSessionController extends Controller
             return response()->json(['message' => 'WhatsApp instance not configured.'], 422);
         }
 
-        $existingSession = ChatSession::query()
+        $sessionQuery = ChatSession::query()
             ->when(! empty($validated['mobile']), fn ($query) => $query->orWhere('mobile', $validated['mobile']))
             ->when(! empty($validated['email']), fn ($query) => $query->orWhere('email', $validated['email']))
+            ->orderByDesc('id');
+
+        $existingSession = (clone $sessionQuery)
             ->where('status', 'active')
-            ->orderByDesc('id')
             ->first();
 
         if ($existingSession) {
@@ -51,6 +53,27 @@ class ChatSessionController extends Controller
                 'group' => null,
                 'channel' => $existingSession->pusher_channel,
                 'messages' => $this->serializeMessages($existingSession),
+            ]);
+        }
+
+        $endedSession = (clone $sessionQuery)
+            ->where('status', 'ended')
+            ->first();
+
+        if ($endedSession) {
+            $endedSession->restoreFromEnded();
+
+            $groupChannel = "group-" . ($endedSession->group_id ?: $endedSession->group_jid);
+            if (! $endedSession->pusher_channel && $groupChannel !== 'group-') {
+                $endedSession->pusher_channel = $groupChannel;
+            }
+            $endedSession->save();
+
+            return response()->json([
+                'session' => $endedSession,
+                'group' => null,
+                'channel' => $endedSession->pusher_channel,
+                'messages' => $this->serializeMessages($endedSession),
             ]);
         }
 
@@ -159,7 +182,7 @@ class ChatSessionController extends Controller
             return response()->json(['message' => 'Message text is required.'], 422);
         }
 
-        if (in_array($session->status, ['blocked', 'ended'], true)) {
+        if ($session->status === 'blocked') {
             return response()->json(['status' => 'ignored', 'reason' => 'chat_not_active']);
         }
 
@@ -169,6 +192,8 @@ class ChatSessionController extends Controller
         if (! $session->instance) {
             return response()->json(['message' => 'WhatsApp instance not configured.'], 422);
         }
+
+        $session->restoreFromEnded();
 
         $whatsapp->sendText($session->instance, [
             'number' => $session->group_jid,
@@ -245,7 +270,7 @@ class ChatSessionController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        if (! $session || $session->status === 'ended') {
+        if (! $session || $session->status === 'blocked') {
             return response()->json(['message' => 'Session not found.'], 404);
         }
 

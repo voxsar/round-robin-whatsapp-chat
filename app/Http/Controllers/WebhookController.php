@@ -53,7 +53,7 @@ class WebhookController extends Controller
 
         // Find active chat session by group JID
         $session = ChatSession::where('group_jid', $groupJid)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'ended'])
             ->first();
 
         if (!$session) {
@@ -74,7 +74,7 @@ class WebhookController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'no_text_content']);
         }
 
-        if (in_array($session->status, ['blocked', 'ended'], true)) {
+        if ($session->status === 'blocked') {
             return response()->json(['status' => 'ignored', 'reason' => 'session_inactive']);
         }
 
@@ -155,6 +155,8 @@ class WebhookController extends Controller
         if ($fromMe) {
             return response()->json(['status' => 'ignored', 'reason' => 'from_me']);
         }
+
+        $session->restoreFromEnded();
 
         // Extract sender information
         $sender = $payload['sender'] ?? 'unknown';

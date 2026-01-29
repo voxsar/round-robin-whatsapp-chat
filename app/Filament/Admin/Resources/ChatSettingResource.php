@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
@@ -28,6 +29,34 @@ class ChatSettingResource extends Resource
                     ->label('Bot WhatsApp Number')
                     ->placeholder('+1 555 000 0000')
                     ->maxLength(40),
+                Section::make('Participant Settings')
+                    ->description('Comma-separated WhatsApp numbers or JIDs.')
+                    ->schema([
+                        Textarea::make('pending_participants')
+                            ->label('Pending/Start Page Participants')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                        Textarea::make('stage_new_participants')
+                            ->label('Stage: New')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                        Textarea::make('stage_qualified_participants')
+                            ->label('Stage: Qualified')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                        Textarea::make('stage_in_progress_participants')
+                            ->label('Stage: In Progress')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                        Textarea::make('stage_resolved_participants')
+                            ->label('Stage: Resolved')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                        Textarea::make('stage_archived_participants')
+                            ->label('Stage: Archived')
+                            ->rows(2)
+                            ->placeholder('+15550000001,+15550000002'),
+                    ]),
                 TextInput::make('away_after_minutes')
                     ->numeric()
                     ->minValue(1)

@@ -11,6 +11,12 @@ class ChatSetting extends Model
 
     protected $fillable = [
         'bot_number',
+        'pending_participants',
+        'stage_new_participants',
+        'stage_qualified_participants',
+        'stage_in_progress_participants',
+        'stage_resolved_participants',
+        'stage_archived_participants',
         'away_after_minutes',
         'end_after_minutes',
         'away_message',

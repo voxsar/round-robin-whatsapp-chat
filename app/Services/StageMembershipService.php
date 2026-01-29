@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ChatSetting;
 use App\Models\Person;
 use Illuminate\Support\Facades\Log;
 
@@ -64,6 +65,14 @@ class StageMembershipService
 
     private function stageParticipants(string $stage): array
     {
+        $settings = ChatSetting::current();
+        $settingsKey = "stage_{$stage}_participants";
+        $configured = $this->parseParticipants($settings->{$settingsKey} ?? null);
+
+        if ($configured !== []) {
+            return $configured;
+        }
+
         return array_values(array_filter(config("whatsapp.stage_participants.{$stage}", [])));
     }
 
@@ -76,5 +85,19 @@ class StageMembershipService
         }
 
         return $this->stageParticipants($stage);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseParticipants(?string $participants): array
+    {
+        if (! $participants) {
+            return [];
+        }
+
+        $values = array_map('trim', explode(',', $participants));
+
+        return array_values(array_filter($values, fn ($value) => $value !== ''));
     }
 }

@@ -105,13 +105,15 @@ class ChatSessionResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (ChatSession $record, array $data): void {
-                        if (in_array($record->status, ['blocked', 'ended'], true)) {
+                        if ($record->status === 'blocked') {
                             return;
                         }
 
                         if (! $record->instance || ! $record->group_jid) {
                             return;
                         }
+
+                        $record->restoreFromEnded();
 
                         app(WhatsappClient::class)->sendText($record->instance, [
                             'number' => $record->group_jid,

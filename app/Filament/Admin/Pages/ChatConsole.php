@@ -91,9 +91,11 @@ class ChatConsole extends Page
 
         $session = ChatSession::find($this->activeSessionId);
 
-        if (! $session || in_array($session->status, ['blocked', 'ended'], true)) {
+        if (! $session || $session->status === 'blocked') {
             return;
         }
+
+        $session->restoreFromEnded();
 
         if ($session->instance && $session->group_jid) {
             $whatsapp->sendText($session->instance, [

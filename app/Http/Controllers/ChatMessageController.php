@@ -31,7 +31,7 @@ class ChatMessageController extends Controller
             return response()->json(['message' => 'Session not found.'], 404);
         }
 
-        if (in_array($session->status, ['blocked', 'ended'], true)) {
+        if ($session->status === 'blocked') {
             return response()->json(['status' => 'ignored', 'reason' => 'chat_not_active']);
         }
 
@@ -40,6 +40,8 @@ class ChatMessageController extends Controller
         }
 
         $groupId = $session->whatsapp_group_id ?: $session->group_jid;
+
+        $session->restoreFromEnded();
 
         try {
             $provider->sendGroupMessage($groupId, $validated['message']);

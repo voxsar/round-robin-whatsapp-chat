@@ -53,4 +53,15 @@ class ChatSession extends Model
     {
         return $this->hasMany(ChatMessage::class, 'chat_session_id');
     }
+
+    public function restoreFromEnded(): void
+    {
+        if ($this->status !== 'ended') {
+            return;
+        }
+
+        $this->status = 'active';
+        $this->ended_at = null;
+        $this->away_sent_at = null;
+    }
 }

@@ -239,7 +239,7 @@ export default {
   },
   computed: {
     canStartChat() {
-      return this.consents.savedContact && this.consents.joinGroup
+      return !!this.preChatForm.name && (!!this.preChatForm.email || !!this.preChatForm.mobile)
     },
     containerClass() {
       return this.embedMode === 'filament' ? 'pointer-events-none' : 'min-h-screen bg-slate-50'
@@ -402,10 +402,6 @@ export default {
     async startChat() {
       if (!this.preChatForm.name || (!this.preChatForm.email && !this.preChatForm.mobile)) {
         alert('Please provide your name and either email or mobile number')
-        return
-      }
-      if (!this.canStartChat) {
-        alert('Please confirm the requirements before starting the chat.')
         return
       }
 
