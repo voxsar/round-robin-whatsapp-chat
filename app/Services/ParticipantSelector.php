@@ -10,7 +10,7 @@ class ParticipantSelector
     public function selectParticipants(?bool $roundRobin = null): array
     {
         $roundRobin = $roundRobin ?? (bool) config('whatsapp.round_robin');
-        $botNumber = (string) config('whatsapp.bot_number');
+        $botNumber = (string) (\App\Models\ChatSetting::current()->bot_number ?: config('whatsapp.bot_number'));
         $participants = [];
 
         if ($roundRobin) {

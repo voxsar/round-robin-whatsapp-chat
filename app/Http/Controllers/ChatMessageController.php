@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatSession;
+use App\Models\ChatMessage;
 use App\Services\PusherBroadcaster;
 use App\Services\WhatsAppProvider;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,10 @@ class ChatMessageController extends Controller
             return response()->json(['message' => 'Session not found.'], 404);
         }
 
+        if (in_array($session->status, ['blocked', 'ended'], true)) {
+            return response()->json(['status' => 'ignored', 'reason' => 'chat_not_active']);
+        }
+
         if (empty($session->whatsapp_group_id) && empty($session->group_jid)) {
             return response()->json(['message' => 'Session has no WhatsApp group.'], 422);
         }
@@ -52,21 +57,54 @@ class ChatMessageController extends Controller
             return response()->json(['message' => 'Failed to send message.'], 502);
         }
 
+        $message = ChatMessage::create([
+            'chat_session_id' => $session->id,
+            'sender' => 'visitor',
+            'sender_name' => $session->name,
+            'sender_number' => $session->mobile,
+            'text' => $validated['message'],
+            'source' => 'web',
+            'sent_at' => now(),
+        ]);
+
         if (! $session->first_response_at) {
             $session->first_response_at = now();
         }
         $session->last_response_at = now();
+        $session->away_sent_at = null;
         $session->save();
 
-        if (! empty($session->pusher_channel)) {
+        $groupKey = $session->group_id ?: ($session->group_jid ?: $session->whatsapp_group_id);
+        $groupChannel = $groupKey ? "group-{$groupKey}" : null;
+        $legacyChannel = $session->pusher_channel && $session->pusher_channel !== $groupChannel
+            ? $session->pusher_channel
+            : null;
+
+        if (! empty($groupChannel) || ! empty($legacyChannel)) {
             try {
-                $broadcaster->broadcastMessage($session->pusher_channel, [
-                    'session_id' => $session->session_id,
-                    'message' => $validated['message'],
-                    'sender' => 'visitor',
-                    'timestamp' => now()->toIso8601String(),
-                ]);
-                Log::info('ChatMessage: Broadcast to Pusher', ['channel' => $session->pusher_channel]);
+                $payload = [
+                    'message' => [
+                        'id' => (string) $message->id,
+                        'sender' => 'visitor',
+                        'sender_name' => $session->name,
+                        'text' => $validated['message'],
+                        'timestamp' => now()->toIso8601String(),
+                    ],
+                ];
+
+                if (! empty($groupChannel)) {
+                    $broadcaster->broadcastMessage($groupChannel, $payload);
+                }
+
+                if ($legacyChannel) {
+                    $broadcaster->broadcastMessage($legacyChannel, $payload);
+                }
+
+                if ($groupChannel && $session->pusher_channel !== $groupChannel) {
+                    $session->forceFill(['pusher_channel' => $groupChannel])->save();
+                }
+
+                Log::info('ChatMessage: Broadcast to Pusher', ['channel' => $groupChannel]);
             } catch (RuntimeException $exception) {
                 Log::warning('Failed to broadcast chat message.', [
                     'session_id' => $session->session_id,

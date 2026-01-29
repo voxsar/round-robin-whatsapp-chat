@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatSession;
+use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Services\PusherClient;
+use App\Services\WhatsappClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class WebhookController extends Controller
 {
@@ -70,6 +74,81 @@ class WebhookController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'no_text_content']);
         }
 
+        if (in_array($session->status, ['blocked', 'ended'], true)) {
+            return response()->json(['status' => 'ignored', 'reason' => 'session_inactive']);
+        }
+
+        $trimmedMessage = trim($messageText);
+        if (str_starts_with($trimmedMessage, '/')) {
+            $command = strtolower(strtok($trimmedMessage, ' '));
+
+            if ($command === '/endchat') {
+                $endText = ChatSetting::current()->end_message
+                    ?? config('chat.end_message', 'Chat ended due to inactivity.');
+
+                ChatMessage::create([
+                    'chat_session_id' => $session->id,
+                    'sender' => 'system',
+                    'text' => $endText,
+                    'source' => 'whatsapp',
+                    'sent_at' => now(),
+                ]);
+
+                $session->status = 'ended';
+                $session->ended_at = now();
+                $session->save();
+
+                $channelKey = $session->group_id ?: $session->group_jid;
+                $channel = $channelKey ? "group-{$channelKey}" : $session->pusher_channel;
+                if ($channel) {
+                    $pusher->trigger($channel, 'message', [
+                        'message' => [
+                            'id' => (string) Str::uuid(),
+                            'sender' => 'system',
+                            'text' => $endText,
+                            'timestamp' => now()->toIso8601String(),
+                        ],
+                    ]);
+                }
+
+                $this->sendGroupMessage($session, $endText);
+
+                return response()->json(['status' => 'ended']);
+            }
+
+            if ($command === '/block') {
+                $blockText = 'Chat blocked by agent.';
+
+                ChatMessage::create([
+                    'chat_session_id' => $session->id,
+                    'sender' => 'system',
+                    'text' => $blockText,
+                    'source' => 'whatsapp',
+                    'sent_at' => now(),
+                ]);
+
+                $session->status = 'blocked';
+                $session->save();
+
+                $channelKey = $session->group_id ?: $session->group_jid;
+                $channel = $channelKey ? "group-{$channelKey}" : $session->pusher_channel;
+                if ($channel) {
+                    $pusher->trigger($channel, 'message', [
+                        'message' => [
+                            'id' => (string) Str::uuid(),
+                            'sender' => 'system',
+                            'text' => $blockText,
+                            'timestamp' => now()->toIso8601String(),
+                        ],
+                    ]);
+                }
+
+                return response()->json(['status' => 'blocked']);
+            }
+
+            return response()->json(['status' => 'ignored', 'reason' => 'command']);
+        }
+
         // Check if message is from the bot itself
         $fromMe = $data['key']['fromMe'] ?? false;
         
@@ -83,8 +162,12 @@ class WebhookController extends Controller
         $messageId = $data['key']['id'] ?? uniqid('msg_', true);
         $timestamp = $data['messageTimestamp'] ?? time();
 
-        // Broadcast to Pusher channel
-        $channel = "session-{$session->id}";
+        // Broadcast to group-based channel so all clients with the same group_id receive it
+        $groupKey = $session->group_id ?: $session->group_jid;
+        $groupChannel = $groupKey ? "group-{$groupKey}" : null;
+        $legacyChannel = $session->pusher_channel && $session->pusher_channel !== $groupChannel
+            ? $session->pusher_channel
+            : null;
         $pusherPayload = [
             'message' => [
                 'id' => $messageId,
@@ -97,18 +180,65 @@ class WebhookController extends Controller
         ];
         
         Log::info('WhatsApp Webhook: Broadcasting to Pusher', [
-            'channel' => $channel,
+            'channel' => $groupChannel,
             'message' => $messageText,
             'sender' => $pushName
         ]);
         
-        $pusher->trigger($channel, 'message', $pusherPayload);
+        $message = ChatMessage::create([
+            'chat_session_id' => $session->id,
+            'sender' => 'agent',
+            'sender_name' => $pushName,
+            'sender_number' => $sender,
+            'text' => $messageText,
+            'source' => 'whatsapp',
+            'sent_at' => now(),
+        ]);
+
+        $pusherPayload['message']['id'] = (string) $message->id;
+
+        if ($groupChannel) {
+            $pusher->trigger($groupChannel, 'message', $pusherPayload);
+        }
+
+        if ($legacyChannel) {
+            $pusher->trigger($legacyChannel, 'message', $pusherPayload);
+        }
+
+        if (! $session->first_response_at) {
+            $session->first_response_at = now();
+        }
+        $session->last_response_at = now();
+        $session->away_sent_at = null;
+
+        if ($groupChannel && $session->pusher_channel !== $groupChannel) {
+            $session->pusher_channel = $groupChannel;
+        }
 
         // Update session last activity
-        $session->touch();
+        $session->save();
 
         Log::info('WhatsApp Webhook: Success', ['session_id' => $session->id]);
 
         return response()->json(['status' => 'ok', 'session_id' => $session->id]);
+    }
+
+    private function sendGroupMessage(ChatSession $session, string $text): void
+    {
+        if (! $session->instance || ! $session->group_jid) {
+            return;
+        }
+
+        try {
+            app(WhatsappClient::class)->sendText($session->instance, [
+                'number' => $session->group_jid,
+                'text' => $text,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('WhatsApp Webhook: Failed to send system message', [
+                'session_id' => $session->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

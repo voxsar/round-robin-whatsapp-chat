@@ -22,6 +22,8 @@ Route::post('/chat/message', [ChatMessageController::class, 'store'])
 Route::post('/webhooks/whatsapp', WhatsAppWebhookController::class);
 Route::post('/groups', [GroupCreationController::class, 'store']);
 Route::post('/chat/session', [ChatSessionController::class, 'store']);
+Route::post('/chat/session/lookup', [ChatSessionController::class, 'lookup']);
+Route::post('/chat/session/end', [ChatSessionController::class, 'end']);
 Route::post('/group/create/{instance}', [GroupController::class, 'create']);
 Route::get('/live-location', [LiveLocationController::class, 'show'])->name('live-location.show');
 Route::get('/live-location/thumbnail', [LiveLocationController::class, 'thumbnail'])->name('live-location.thumbnail');

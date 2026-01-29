@@ -28,11 +28,15 @@ class ChatSession extends Model
         'assigned_user_id',
         'first_response_at',
         'last_response_at',
+        'away_sent_at',
+        'ended_at',
     ];
 
     protected $casts = [
         'first_response_at' => 'datetime',
         'last_response_at' => 'datetime',
+        'away_sent_at' => 'datetime',
+        'ended_at' => 'datetime',
     ];
 
     public function person()
@@ -43,5 +47,10 @@ class ChatSession extends Model
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(ChatMessage::class, 'chat_session_id');
     }
 }

@@ -22,11 +22,24 @@ class StageMembershipService
             return;
         }
 
-        $person->chatSessions()->get()->each(function ($session) use ($addParticipants, $removeParticipants): void {
+        $person->chatSessions()->get()->each(function ($session) use ($addParticipants, $removeParticipants, $previousStage, $person): void {
             $groupId = $session->group_jid ?: $session->whatsapp_group_id;
 
             if (! $groupId || ! $session->instance) {
                 return;
+            }
+
+            if ($previousStage && $previousStage !== $person->stage) {
+                $message = sprintf('Stage updated: %s → %s', $previousStage, $person->stage);
+                $this->whatsappClient->sendText($session->instance, [
+                    'number' => $groupId,
+                    'text' => $message,
+                ]);
+                Log::info('StageMembership: stage change message sent', [
+                    'group_id' => $groupId,
+                    'from' => $previousStage,
+                    'to' => $person->stage,
+                ]);
             }
 
             if (! empty($addParticipants)) {

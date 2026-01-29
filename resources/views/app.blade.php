@@ -8,11 +8,16 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
+        @php
+            $chatSettings = \App\Models\ChatSetting::current();
+            $botNumber = $chatSettings->bot_number ?: config('services.whatsapp.bot_number');
+        @endphp
         <div
             id="app"
             data-pusher-key="{{ config('services.pusher.key') }}"
             data-pusher-cluster="{{ config('services.pusher.cluster') }}"
             data-whatsapp-instance="{{ config('services.whatsapp.instance') }}"
+            data-whatsapp-bot-number="{{ $botNumber }}"
         ></div>
     </body>
 </html>

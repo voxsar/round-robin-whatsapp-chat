@@ -47,6 +47,7 @@ return [
         'api_key' => env('WHATSAPP_API_KEY'),
 		'token' => env('WHATSAPP_API_KEY'),
         'instance' => env('WHATSAPP_INSTANCE'),
+        'bot_number' => env('WHATSAPP_BOT_NUMBER'),
         'webhook_secret' => env('WHATSAPP_WEBHOOK_SECRET'),
         'signature_header' => env('WHATSAPP_SIGNATURE_HEADER', 'X-Webhook-Signature'),
     ],

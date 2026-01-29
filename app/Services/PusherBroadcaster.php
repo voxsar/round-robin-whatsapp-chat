@@ -25,7 +25,7 @@ class PusherBroadcaster
         }
 
         $body = [
-            'name' => 'chat.message',
+            'name' => 'message',
             'channels' => [$channel],
             'data' => json_encode($payload, JSON_THROW_ON_ERROR),
         ];

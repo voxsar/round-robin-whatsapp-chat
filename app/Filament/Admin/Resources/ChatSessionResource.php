@@ -15,6 +15,11 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use App\Models\ChatMessage;
+use App\Services\PusherClient;
+use App\Services\WhatsappClient;
 use Illuminate\Database\Eloquent\Builder;
 
 class ChatSessionResource extends Resource
@@ -40,6 +45,8 @@ class ChatSessionResource extends Resource
                         'active' => 'Active',
                         'resolved' => 'Resolved',
                         'archived' => 'Archived',
+                        'blocked' => 'Blocked',
+                        'ended' => 'Ended',
                     ])
                     ->required(),
                 Select::make('assigned_user_id')
@@ -82,10 +89,69 @@ class ChatSessionResource extends Resource
                         'active' => 'Active',
                         'resolved' => 'Resolved',
                         'archived' => 'Archived',
+                        'blocked' => 'Blocked',
+                        'ended' => 'Ended',
                     ]),
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('sendMessage')
+                    ->label('Reply')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->form([
+                        Textarea::make('message')
+                            ->required()
+                            ->maxLength(2000)
+                            ->rows(3),
+                    ])
+                    ->action(function (ChatSession $record, array $data): void {
+                        if (in_array($record->status, ['blocked', 'ended'], true)) {
+                            return;
+                        }
+
+                        if (! $record->instance || ! $record->group_jid) {
+                            return;
+                        }
+
+                        app(WhatsappClient::class)->sendText($record->instance, [
+                            'number' => $record->group_jid,
+                            'text' => $data['message'],
+                        ]);
+
+                        $message = ChatMessage::create([
+                            'chat_session_id' => $record->id,
+                            'user_id' => auth()->id(),
+                            'sender' => 'agent',
+                            'sender_name' => auth()->user()?->name,
+                            'text' => $data['message'],
+                            'source' => 'filament',
+                            'sent_at' => now(),
+                        ]);
+
+                        if (! $record->first_response_at) {
+                            $record->first_response_at = now();
+                        }
+                        $record->last_response_at = now();
+
+                        $channelKey = $record->group_id ?: $record->group_jid;
+                        $channel = $channelKey ? "group-{$channelKey}" : $record->pusher_channel;
+                        if ($channel) {
+                            app(PusherClient::class)->trigger($channel, 'message', [
+                                'message' => [
+                                    'id' => (string) $message->id,
+                                    'sender' => 'agent',
+                                    'sender_name' => auth()->user()?->name,
+                                    'text' => $data['message'],
+                                    'timestamp' => now()->toIso8601String(),
+                                ],
+                            ]);
+                        }
+
+                        if ($channel && $record->pusher_channel !== $channel) {
+                            $record->pusher_channel = $channel;
+                        }
+                        $record->save();
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
