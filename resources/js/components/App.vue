@@ -60,7 +60,7 @@
               />
             </div>
             <div class="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-              <p class="font-medium">Before we start</p>
+              <p class="font-medium">Before we start, if you prefer to converse on whatsapp then...</p>
               <div class="rounded-lg border border-emerald-200 bg-white p-3">
                 <p class="text-xs font-semibold uppercase text-emerald-600">Save our number</p>
                 <div class="mt-2 flex items-center justify-between gap-2">
@@ -271,6 +271,25 @@ export default {
     this.restoreSession()
   },
   methods: {
+    resetPusher() {
+      if (this.channel && this.pusher) {
+        this.channel.unbind_all()
+        this.pusher.unsubscribe(this.channel.name)
+      }
+      if (this.pusher) {
+        this.pusher.disconnect()
+      }
+      this.channel = null
+      this.pusher = null
+    },
+    resetChatState() {
+      localStorage.removeItem('rr_chat_session')
+      this.sessionId = null
+      this.sessionData = null
+      this.messages = []
+      this.connectionStatus = 'disconnected'
+      this.newMessage = ''
+    },
     toggleOpen() {
       this.isOpen = !this.isOpen
     },
@@ -512,12 +531,9 @@ export default {
         console.error('Error ending chat:', error)
       }
 
-      localStorage.removeItem('rr_chat_session')
-      this.sessionId = null
-      this.sessionData = null
-      this.messages = []
-      this.connectionStatus = 'disconnected'
-      this.newMessage = ''
+      this.resetPusher()
+      this.resetChatState()
+      this.initPusher()
     },
     async loadExistingChat() {
       const payload = {

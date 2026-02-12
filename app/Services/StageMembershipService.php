@@ -44,7 +44,7 @@ class StageMembershipService
             }
 
             if (! empty($addParticipants)) {
-                $this->whatsappClient->addParticipants($session->instance, $groupId, $addParticipants);
+                $this->whatsappClient->updateParticipants($session->instance, $groupId, 'add', $addParticipants);
                 Log::info('StageMembership: added participants', [
                     'group_id' => $groupId,
                     'participants' => $addParticipants,
@@ -53,7 +53,7 @@ class StageMembershipService
             }
 
             if (! empty($removeParticipants)) {
-                $this->whatsappClient->removeParticipants($session->instance, $groupId, $removeParticipants);
+                $this->whatsappClient->updateParticipants($session->instance, $groupId, 'remove', $removeParticipants);
                 Log::info('StageMembership: removed participants', [
                     'group_id' => $groupId,
                     'participants' => $removeParticipants,

@@ -23,19 +23,22 @@ class WhatsappClient
 
     public function addParticipants(string $instance, string $groupId, array $participants): array
     {
-        return $this->request()
-            ->post($this->endpoint($this->groupParticipantEndpoint('whatsapp.group_add_participant_endpoint', $instance)), [
-                'groupId' => $groupId,
-                'participants' => $participants,
-            ])
-            ->json() ?? [];
+        return $this->updateParticipants($instance, $groupId, 'add', $participants);
     }
 
     public function removeParticipants(string $instance, string $groupId, array $participants): array
     {
+        return $this->updateParticipants($instance, $groupId, 'remove', $participants);
+    }
+
+    public function updateParticipants(string $instance, string $groupJid, string $action, array $participants): array
+    {
+        $endpoint = $this->endpoint($this->groupParticipantEndpoint('whatsapp.group_update_participant_endpoint', $instance));
+        $endpoint .= '?' . http_build_query(['groupJid' => $groupJid]);
+
         return $this->request()
-            ->post($this->endpoint($this->groupParticipantEndpoint('whatsapp.group_remove_participant_endpoint', $instance)), [
-                'groupId' => $groupId,
+            ->post($endpoint, [
+                'action' => $action,
                 'participants' => $participants,
             ])
             ->json() ?? [];

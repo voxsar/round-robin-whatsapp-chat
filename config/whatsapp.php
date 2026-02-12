@@ -7,6 +7,7 @@ return [
     'round_robin' => env('WHATSAPP_ROUND_ROBIN', false),
     'group_create_endpoint' => env('WHATSAPP_GROUP_CREATE_ENDPOINT', ''),
     'api_token' => env('WHATSAPP_API_TOKEN', ''),
+    'group_update_participant_endpoint' => env('WHATSAPP_GROUP_UPDATE_PARTICIPANT_ENDPOINT', '/group/updateParticipant/{instance}'),
     'group_add_participant_endpoint' => env('WHATSAPP_GROUP_ADD_PARTICIPANT_ENDPOINT', '/group/participants/add/{instance}'),
     'group_remove_participant_endpoint' => env('WHATSAPP_GROUP_REMOVE_PARTICIPANT_ENDPOINT', '/group/participants/remove/{instance}'),
     'stage_participants' => [
